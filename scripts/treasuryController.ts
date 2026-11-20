@@ -17,8 +17,10 @@ export async function run(provider: NetworkProvider) {
         throw new Error('No sender address available. Please check your wallet/mnemonic.');
     }
 
-    const treasuryInput = await ui.input('Enter Soma Treasury Contract Address:');
-    const treasuryAddress = Address.parse(treasuryInput.trim());
+    const defaultTreasury = 'kQAv1SHQhr7bH0x00nNyT7uT12V-4JKzTC8i_EaFjjEvre7m';
+    const treasuryInput = await ui.input(`Enter Soma Treasury Address (Press Enter for default: ${defaultTreasury}):`);
+    const finalAddressStr = treasuryInput.trim().length > 0 ? treasuryInput.trim() : defaultTreasury;
+    const treasuryAddress = Address.parse(finalAddressStr);
     const treasury = provider.open(SomaTreasury.createFromAddress(treasuryAddress));
 
     const data = await treasury.getTreasuryData();

@@ -10,6 +10,10 @@ This repository contains the production-grade smart contracts for **Soma ($SOMA)
   `kQAqqhoZIKObqya7D3wxjltSRzJ6idRMFiEV-98BACjFxkMF`  
   [View on Tonviewer](https://testnet.tonviewer.com/kQAqqhoZIKObqya7D3wxjltSRzJ6idRMFiEV-98BACjFxkMF) | [View on Tonscan](https://testnet.tonscan.org/address/kQAqqhoZIKObqya7D3wxjltSRzJ6idRMFiEV-98BACjFxkMF)
 
+* **Soma Treasury (Vault) Contract:**  
+  `kQAv1SHQhr7bH0x00nNyT7uT12V-4JKzTC8i_EaFjjEvre7m`  
+  [View on Tonviewer](https://testnet.tonviewer.com/kQAv1SHQhr7bH0x00nNyT7uT12V-4JKzTC8i_EaFjjEvre7m) | [View on Tonscan](https://testnet.tonscan.org/address/kQAv1SHQhr7bH0x00nNyT7uT12V-4JKzTC8i_EaFjjEvre7m)
+
 ---
 
 ## 📁 Architecture Overview
