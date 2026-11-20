@@ -27,16 +27,16 @@ This repository contains the production-grade smart contracts for **Soma ($SOMA)
 
 ---
 
-## 🛠️ CLI Commands Cheat Sheet (কমান্ড গাইড)
+## 🛠️ CLI Commands Cheat Sheet
 
-| কমান্ড (Command) | বিবরণ (Description) | মোড (Mode) |
+| Command | Description | Execution Mode |
 | :--- | :--- | :--- |
-| `npx blueprint run deploySomaToken --testnet --mnemonic` | নতুন সোমা টোকেন ($SOMA) টেস্টনেটে ডিপ্লয় করে | Local Mnemonic |
-| `npx blueprint run mintInitialSupply --testnet --mnemonic` | এক ক্লিকে ১০০M বা ২০০M ফিক্সড সাপ্লাই আপনার ওয়ালেটে মিন্ট করে | Local Mnemonic |
-| `npx blueprint run quickMint --testnet --mnemonic` | নির্দিষ্ট পরিমাণের টোকেন নিজের বা ইউজারের ওয়ালেটে মিন্ট করে | Local Mnemonic |
-| `npx blueprint run deploySomaTreasury --testnet --mnemonic` | সোমা ট্রেজারি ভল্ট (Vault) কন্ট্রাক্ট টেস্টনেটে ডিপ্লয় করে | Local Mnemonic |
-| `npx blueprint run treasuryController --testnet --mnemonic` | ট্রেজারিতে জমা হওয়া সব TON অ্যাডমিন ওয়ালেটে সুইপ/উইথড্র করে | Local Mnemonic |
-| `npx blueprint test SomaToken.spec.ts SomaTreasury.spec.ts` | লোকাল স্যান্ডবক্স ইউনিট টেস্ট চালায় (১২/১২ পাস) | Local Sandbox |
+| `npx blueprint run deploySomaToken --testnet --mnemonic` | Deploys new Soma Token ($SOMA) Minter to TON Testnet | Local Mnemonic |
+| `npx blueprint run mintInitialSupply --testnet --mnemonic` | Mints 100M or 200M initial fixed supply to Admin wallet in 1-click | Local Mnemonic |
+| `npx blueprint run quickMint --testnet --mnemonic` | Mints custom quantity of SOMA to Admin or user wallet | Local Mnemonic |
+| `npx blueprint run deploySomaTreasury --testnet --mnemonic` | Deploys Soma Treasury (Vault) contract on Testnet | Local Mnemonic |
+| `npx blueprint run treasuryController --testnet --mnemonic` | Inspects collected TON and sweeps/withdraws funds to Admin | Local Mnemonic |
+| `npx blueprint test SomaToken.spec.ts SomaTreasury.spec.ts` | Runs local sandbox automated unit tests (12/12 passing) | Local Sandbox |
 
 ---
 
