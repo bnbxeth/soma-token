@@ -206,6 +206,11 @@ export class SomaTreasury implements Contract {
         });
     }
 
+    async getContractName(provider: ContractProvider): Promise<string> {
+        const res = await provider.get('get_contract_name', []);
+        return res.stack.readString();
+    }
+
     async getTreasuryData(provider: ContractProvider) {
         const res = await provider.get('get_treasury_data', []);
         return {

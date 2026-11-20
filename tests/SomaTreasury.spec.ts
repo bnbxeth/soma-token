@@ -74,7 +74,10 @@ describe('Soma Treasury (Vault) Unit Tests', () => {
         });
     });
 
-    it('1. should deploy with correct initial state and admin', async () => {
+    it('1. should deploy with correct initial state, contract name, and admin', async () => {
+        const name = await treasury.getContractName();
+        expect(name).toBe('Soma Treasury Vault');
+
         const data = await treasury.getTreasuryData();
         expect(data.adminAddress.equals(admin.address)).toBe(true);
         expect(data.jettonMinterAddress?.equals(minter.address)).toBe(true);
