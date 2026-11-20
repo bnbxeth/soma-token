@@ -24,7 +24,7 @@ export async function run(provider: NetworkProvider) {
     ui.write(`Treasury Admin (Vault Owner): ${adminAddress.toString({ testOnly: isTestnet })}\n`);
 
     // Linked Soma Jetton Minter
-    const defaultMinter = 'EQABP8tq7XSN9PG2a5_fapigi8JQQDqdRwjZIhfgwDplcL7C';
+    const defaultMinter = 'kQAqqhoZIKObqya7D3wxjltSRzJ6idRMFiEV-98BACjFxkMF';
     const minterAddress = Address.parse(defaultMinter);
     ui.write(`Linked Soma Jetton Minter: ${minterAddress.toString({ testOnly: isTestnet })}\n`);
 

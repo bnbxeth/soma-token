@@ -4,7 +4,7 @@ import { Address, fromNano, toNano } from '@ton/core';
 import { NetworkProvider } from '@ton/blueprint';
 import { JettonMinter } from '../wrappers/JettonMinter';
 
-const SOMA_MINTER_ADDRESS = Address.parse('EQABP8tq7XSN9PG2a5_fapigi8JQQDqdRwjZIhfgwDplcL7C');
+const SOMA_MINTER_ADDRESS = Address.parse('kQAqqhoZIKObqya7D3wxjltSRzJ6idRMFiEV-98BACjFxkMF');
 
 export async function run(provider: NetworkProvider) {
     const isTestnet = provider.network() !== 'mainnet';
