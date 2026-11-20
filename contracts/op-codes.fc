@@ -32,3 +32,16 @@ const op::change_metadata_uri = 0xcb862902;
 const error::balance_error = 47;
 const error::not_enough_gas = 48;
 const error::invalid_message = 49;
+
+;; soma-treasury
+const op::deposit_verification = 0x54657374;
+const op::withdraw_ton = 0x6e746b73;
+const op::mint_soma = 0x746d696e;
+const op::set_verification_fee = 0x8a9b0c1d;
+const op::set_jetton_minter = 0x9b0c1d2e;
+const op::set_paused = 0xa1b2c3d4;
+
+const error::paused = 101;
+const error::insufficient_fee = 102;
+const error::insufficient_balance = 103;
+

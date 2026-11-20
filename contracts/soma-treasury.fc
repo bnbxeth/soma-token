@@ -1,0 +1,217 @@
+;; Soma Treasury (Vault) Smart Contract
+;; Accepts verification fees in TON from Telegram bot users,
+;; securely locks funds in the contract,
+;; permits ONLY the Admin to withdraw/sweep the TON balance,
+;; and permits Admin to mint/distribute SOMA Jettons via Jetton Minter.
+
+#pragma version >=0.4.3;
+
+#include "stdlib.fc";
+#include "op-codes.fc";
+#include "workchain.fc";
+#include "gas.fc";
+
+;; Storage layout:
+;; - admin_address: MsgAddressInt
+;; - jetton_minter_address: MsgAddress
+;; - total_ton_collected: Coins
+;; - verification_fee: Coins (default e.g. 0.2 TON)
+;; - is_paused: int1 (0 = active, -1 = paused)
+
+(slice, slice, int, int, int) load_data() inline {
+    slice ds = get_data().begin_parse();
+    var data = (
+        ds~load_msg_addr(),
+        ds~load_msg_addr(),
+        ds~load_coins(),
+        ds~load_coins(),
+        ds~load_int(1)
+    );
+    ds.end_parse();
+    return data;
+}
+
+() save_data(slice admin_address, slice jetton_minter_address, int total_ton_collected, int verification_fee, int is_paused) impure inline {
+    set_data(
+        begin_cell()
+            .store_slice(admin_address)
+            .store_slice(jetton_minter_address)
+            .store_coins(total_ton_collected)
+            .store_coins(verification_fee)
+            .store_int(is_paused, 1)
+            .end_cell()
+    );
+}
+
+() recv_internal(int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    slice in_msg_full_slice = in_msg_full.begin_parse();
+    int msg_flags = in_msg_full_slice~load_msg_flags();
+
+    if (msg_flags & 1) { ;; is bounced
+        return ();
+    }
+
+    slice sender_address = in_msg_full_slice~load_msg_addr();
+
+    (slice admin_address, slice jetton_minter_address, int total_ton_collected, int verification_fee, int is_paused) = load_data();
+
+    ;; Handle empty body (direct TON transfer or simple top-up)
+    if (in_msg_body.slice_empty?()) {
+        if (msg_value >= verification_fee) {
+            save_data(admin_address, jetton_minter_address, total_ton_collected + msg_value, verification_fee, is_paused);
+        }
+        return ();
+    }
+
+    int op = in_msg_body~load_uint(32);
+    int query_id = in_msg_body~load_uint(64);
+
+    ;; 1. Deposit Verification Fee
+    ;; Called by Telegram users when linking/verifying their wallet.
+    ;; Payload: op::deposit_verification (0x54657374), query_id, [telegram_user_id: uint64]
+    if (op == op::deposit_verification) {
+        throw_if(error::paused, is_paused);
+        throw_unless(error::insufficient_fee, msg_value >= verification_fee);
+
+        int telegram_user_id = 0;
+        if (in_msg_body.slice_bits() >= 64) {
+            telegram_user_id = in_msg_body~load_uint(64);
+        }
+
+        total_ton_collected += msg_value;
+        save_data(admin_address, jetton_minter_address, total_ton_collected, verification_fee, is_paused);
+        return ();
+    }
+
+    ;; 2. Withdraw TON collected by Vault (Admin Only)
+    ;; Payload: op::withdraw_ton (0x6e746b73), query_id, withdraw_amount: Coins, [recipient_address: MsgAddress]
+    if (op == op::withdraw_ton) {
+        throw_unless(error::not_owner, equal_slices_bits(sender_address, admin_address));
+
+        int withdraw_amount = in_msg_body~load_coins();
+        slice recipient = admin_address;
+        if (in_msg_body.slice_bits() >= 2) {
+            slice dest = in_msg_body~load_msg_addr();
+            if (~ is_address_none(dest)) {
+                recipient = dest;
+            }
+        }
+
+        ;; Keep at least 0.05 TON reserved for contract storage rent
+        raw_reserve(50000000, RESERVE_REGULAR);
+
+        if (withdraw_amount == 0) {
+            ;; Sweep all remaining balance above reserve
+            var msg = begin_cell()
+                .store_msg_flags_and_address_none(NON_BOUNCEABLE)
+                .store_slice(recipient)
+                .store_coins(0)
+                .store_prefix_only_body()
+                .store_op(op::excesses)
+                .store_query_id(query_id);
+            send_raw_message(msg.end_cell(), SEND_MODE_CARRY_ALL_BALANCE);
+        } else {
+            ;; Withdraw specific amount
+            var msg = begin_cell()
+                .store_msg_flags_and_address_none(NON_BOUNCEABLE)
+                .store_slice(recipient)
+                .store_coins(withdraw_amount)
+                .store_prefix_only_body()
+                .store_op(op::excesses)
+                .store_query_id(query_id);
+            send_raw_message(msg.end_cell(), SEND_MODE_PAY_FEES_SEPARATELY);
+        }
+        return ();
+    }
+
+    ;; 3. Mint SOMA Tokens to User (Admin Only)
+    ;; Builds standard TEP-74 op::mint message and routes it to Jetton Minter.
+    ;; Payload: op::mint_soma (0x746d696e), query_id, to_address: MsgAddress, jetton_amount: Coins, forward_ton_amount: Coins
+    if (op == op::mint_soma) {
+        throw_unless(error::not_owner, equal_slices_bits(sender_address, admin_address));
+        throw_if(104, is_address_none(jetton_minter_address));
+
+        slice to_address = in_msg_body~load_msg_addr();
+        int jetton_amount = in_msg_body~load_coins();
+        int forward_ton_amount = in_msg_body.slice_bits() >= 4 ? in_msg_body~load_coins() : 1;
+
+        cell internal_transfer_msg = begin_cell()
+            .store_uint(op::internal_transfer, 32)
+            .store_uint(query_id, 64)
+            .store_coins(jetton_amount)
+            .store_slice(my_address())
+            .store_slice(admin_address)
+            .store_coins(forward_ton_amount)
+            .store_uint(0, 1)
+            .end_cell();
+
+        int ton_for_wallet = 50000000; ;; 0.05 TON
+        cell mint_msg = begin_cell()
+            .store_uint(op::mint, 32)
+            .store_uint(query_id, 64)
+            .store_slice(to_address)
+            .store_coins(ton_for_wallet)
+            .store_ref(internal_transfer_msg)
+            .end_cell();
+
+        var msg = begin_cell()
+            .store_msg_flags_and_address_none(BOUNCEABLE)
+            .store_slice(jetton_minter_address)
+            .store_coins(ton_for_wallet + 20000000)
+            .store_only_body_ref(mint_msg);
+
+        send_raw_message(msg.end_cell(), SEND_MODE_PAY_FEES_SEPARATELY | SEND_MODE_BOUNCE_ON_ACTION_FAIL);
+        return ();
+    }
+
+    ;; 4. Set Verification Fee (Admin Only)
+    if (op == op::set_verification_fee) {
+        throw_unless(error::not_owner, equal_slices_bits(sender_address, admin_address));
+        int new_fee = in_msg_body~load_coins();
+        save_data(admin_address, jetton_minter_address, total_ton_collected, new_fee, is_paused);
+        return ();
+    }
+
+    ;; 5. Set Jetton Minter Address (Admin Only)
+    if (op == op::set_jetton_minter) {
+        throw_unless(error::not_owner, equal_slices_bits(sender_address, admin_address));
+        slice new_minter = in_msg_body~load_msg_addr();
+        save_data(admin_address, new_minter, total_ton_collected, verification_fee, is_paused);
+        return ();
+    }
+
+    ;; 6. Change Admin (Admin Only)
+    if (op == op::change_admin) {
+        throw_unless(error::not_owner, equal_slices_bits(sender_address, admin_address));
+        slice new_admin = in_msg_body~load_msg_addr();
+        save_data(new_admin, jetton_minter_address, total_ton_collected, verification_fee, is_paused);
+        return ();
+    }
+
+    ;; 7. Set Paused / Emergency Stop (Admin Only)
+    if (op == op::set_paused) {
+        throw_unless(error::not_owner, equal_slices_bits(sender_address, admin_address));
+        int new_paused = in_msg_body~load_int(1);
+        save_data(admin_address, jetton_minter_address, total_ton_collected, verification_fee, new_paused);
+        return ();
+    }
+
+    ;; 8. Top up
+    if (op == op::top_up) {
+        return ();
+    }
+
+    throw(error::wrong_op);
+}
+
+;; Get methods
+
+(slice, slice, int, int, int) get_treasury_data() method_id {
+    return load_data();
+}
+
+int get_vault_balance() method_id {
+    [int balance, _] = get_balance();
+    return balance;
+}
+
